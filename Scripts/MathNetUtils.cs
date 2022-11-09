@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using MathNet.Spatial.Euclidean;
 
-namespace GlassSystem
+namespace GlassSystem.Scripts
 {
     public static class MathNetUtils
     {

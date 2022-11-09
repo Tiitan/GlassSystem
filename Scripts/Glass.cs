@@ -5,10 +5,10 @@ using MathNet.Numerics.LinearAlgebra.Double;
 using MathNet.Spatial.Euclidean;
 using UnityEngine;
 using UnityEngine.Rendering;
-using static GlassSystem.MathNetUtils;
+using static GlassSystem.Scripts.MathNetUtils;
 using Random = UnityEngine.Random;
 
-namespace GlassSystem
+namespace GlassSystem.Scripts
 {
     public class Glass : MonoBehaviour
     {
@@ -21,6 +21,7 @@ namespace GlassSystem
         public Mesh Pattern;
 
         private Transform _transform;
+        private float _thickness;
 
 
         public void Break(Vector3 breakPosition, Vector3 originVector)
@@ -66,6 +67,8 @@ namespace GlassSystem
 
             var scale = _transform.lossyScale;
             var scalingMatrix = new DiagonalMatrix(2, 2, new double[] { scale.x, scale.y });
+            var verticesZ = targetVertices.Select(p => p.z).ToList();
+            _thickness = (verticesZ.Max() + Mathf.Abs(verticesZ.Min())) * scale.z;
             var targetPoints = targetVertices.Where(p => Mathf.Abs(p.z - side) < Tolerance)
                 .Select(p => new Point2D(p.x, p.y)).ToList(); // Discard backface
             targetPoints = targetPoints.Distinct(new Point2DComparer(Tolerance)) // Discard side submesh vertex duplicates
