@@ -18,7 +18,7 @@ namespace GlassSystem.Scripts
         private const float SmallShardTimer = 8f;
         private const float Tolerance = 0.001f;
         
-        public Mesh Pattern;
+        public Mesh[] Patterns;
 
         private Transform _transform;
         private float _thickness;
@@ -37,14 +37,15 @@ namespace GlassSystem.Scripts
             if (polygon is null)
                 return;
 
-            var lines = ClipPattern.Clip(Pattern, polygon, localPosition);
+            int patternIndex = Random.Range(0, Patterns.Length);
+            var lines = ClipPattern.Clip(Patterns[patternIndex], polygon, localPosition);
             var shardPolygons = BuildShardPolygons(lines);
         
             var materials = GetComponent<Renderer>().sharedMaterials;
             foreach (Polygon2D shardPolygon in shardPolygons)
             {
                 var center = Point2D.Centroid(shardPolygon.Vertices);
-                var shardMesh = CreateMesh(shardPolygon, center, 0.01f);
+                var shardMesh = CreateMesh(shardPolygon, center, _thickness);
                 SpawnShard(shardMesh, originVector, new Vector3((float)center.X, (float)center.Y, 0), materials);
             }
             Destroy(gameObject);
@@ -59,9 +60,9 @@ namespace GlassSystem.Scripts
             var targetMesh = targetMeshFilter.sharedMesh;
             var targetVertices = new List<Vector3>();
             targetMesh.GetVertices(targetVertices);
-            if (targetVertices.Count > 100)
+            if (targetVertices.Count is > 100 or < 3)
             {
-                Debug.LogWarning("Target too large");
+                Debug.LogWarning($"Invalid mesh ({targetVertices.Count})");
                 return null;
             }
 
@@ -164,14 +165,13 @@ namespace GlassSystem.Scripts
             {
                 loop.Add(next);
                 if (!lines[current].Remove(next))
-                    Debug.LogError("missing index from consumable list.");
-                //throw new Exception("missing index from consumable list.");
+                    throw new InternalGlassException("missing index from consumable list.");
                 int prev = current;
                 current = next;
                 next = lineMap[current][(lineMap[current].FindIndex(x => x == prev) + 1) % lineMap[current].Count];
 
                 if (loop.Count > 100)
-                    throw new Exception("loop > 100, breaking infinite loop.");
+                    throw new InternalGlassException("loop > 100, breaking infinite loop.");
             }
             lines[current].Remove(start);
             return loop;
@@ -200,10 +200,10 @@ namespace GlassSystem.Scripts
             if (shardSurface > SmallShardSurface)
             {
                 var glass = go.AddComponent<Glass>();
-                glass.Pattern = Pattern;
+                glass.Patterns = Patterns;
             }
-            else
-                Destroy(go, shardSurface > MicroShardSurface ? SmallShardTimer : MicroShardTimer); // destroy small shards after x seconds
+            //else
+            //    Destroy(go, shardSurface > MicroShardSurface ? SmallShardTimer : MicroShardTimer); // destroy small shards after x seconds
 
             /*if (Random.Range(0, 2) == 1) // TODO: rigidbody rules
             {
@@ -230,7 +230,6 @@ namespace GlassSystem.Scripts
             for (int i = 1; i < sideSize - 1; i++)
                 indices.AddRange(new[] {sideSize, sideSize + i, sideSize + i + 1});
 
-        
             // side
             var sideIndexStart = indices.Count;
             var sideVertexStart = vertices.Count;
@@ -266,4 +265,17 @@ namespace GlassSystem.Scripts
             return mesh;
         }
     }
+
+    [Serializable]
+    public class InternalGlassException : Exception
+    {
+        public InternalGlassException() { }
+
+        public InternalGlassException(string message)
+            : base(message) { }
+
+        public InternalGlassException(string message, Exception inner)
+            : base(message, inner) { }
+    }
+    
 }

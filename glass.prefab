@@ -111,4 +111,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: feaf8e79a9674134ab10d768149de681, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  Pattern: {fileID: 4300000, guid: c37c98aa787959940a22aef3b74bf11d, type: 2}
+  Patterns:
+  - {fileID: 4300000, guid: 32f121cbf83f79f45b5fe375c81caa1a, type: 2}
+  - {fileID: 4300000, guid: 2cb3fb1ab07b00c4ca94a5bb73261a5a, type: 2}

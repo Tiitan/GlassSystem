@@ -1,3 +1,4 @@
+using GlassSystem.Scripts;
 using UnityEngine;
 
 namespace GlassSystem.Sample
@@ -5,6 +6,8 @@ namespace GlassSystem.Sample
     public class DemoGun : MonoBehaviour
     {
         public float impactForce = 1000f;
+        public int Retry = 3;
+        
         private void Start()
         {
             Cursor.lockState = CursorLockMode.Confined;
@@ -21,10 +24,23 @@ namespace GlassSystem.Sample
                     Debug.DrawRay(transform.position, raycastDirection * hit.distance, Color.yellow, 10);
                     var glass = hit.transform.gameObject.GetComponent<Glass>();
                     if (glass is not null)
-                        glass.Break(hit.point, raycastDirection * impactForce);
+                    {
+                        int failBreak = 0;
+                        while (true)
+                            try
+                            {
+                                glass.Break(hit.point, raycastDirection * impactForce);
+                                return;
+                            }
+                            catch (InternalGlassException e)
+                            {
+                                if (++failBreak >= Retry)
+                                    throw;
+                                Debug.LogWarning($"Failed to break glass (retry {failBreak}): {e}");
+                            }
+                    }
                 }
             }
         }
-
     }
 }

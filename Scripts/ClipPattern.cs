@@ -3,30 +3,33 @@ using System.Linq;
 using MathNet.Spatial.Euclidean;
 using MathNet.Spatial.Units;
 using UnityEngine;
-using static GlassSystem.MathNetUtils;
+using static GlassSystem.Scripts.MathNetUtils;
+using Quaternion = UnityEngine.Quaternion;
 
-namespace GlassSystem
+namespace GlassSystem.Scripts
 {
     public static class ClipPattern
     {
         public static List<LineSegment2D> Clip(Mesh pattern, Polygon2D mask, Vector3 offset)
         {
-            var patternLines = MeshToSegments(pattern, offset);
+            var rotationAngle = Random.Range(0, 360f);
+            var patternLines = MeshToSegments(pattern, offset, rotationAngle);
             var (lines, intersections) = ClipEdges(mask, patternLines);
             var edges = BuildEdgeLines(mask.Vertices.Concat(intersections).ToList());
             return edges.Concat(lines).ToList();
         }
     
-        static List<LineSegment2D> MeshToSegments(Mesh mesh, Vector3 offset)
+        static List<LineSegment2D> MeshToSegments(Mesh mesh, Vector3 offset, float rotationAngle)
         {
             var vertices = new List<Vector3>();
             mesh.GetVertices(vertices);
             var indices = mesh.GetIndices(0);
             var lines = new List<LineSegment2D>();
+            Quaternion rotation = Quaternion.Euler(0, 0, rotationAngle);
             for (int i = 0; i < indices.Length; i += 2)
             {
-                Vector3 start = vertices[indices[i]] + offset;
-                Vector3 end = vertices[indices[i + 1]] + offset;
+                Vector3 start = rotation * vertices[indices[i]] + offset;
+                Vector3 end = rotation * vertices[indices[i + 1]] + offset;
                 lines.Add(new LineSegment2D(new Point2D(start.x, start.y), new Point2D(end.x, end.y)));
             }
 
