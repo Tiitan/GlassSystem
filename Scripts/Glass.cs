@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Drawing;
 using System.Linq;
 using MathNet.Numerics.LinearAlgebra.Double;
 using MathNet.Spatial.Euclidean;
@@ -7,7 +8,7 @@ using UnityEngine;
 using UnityEngine.Rendering;
 using static GlassSystem.Scripts.MathNetUtils;
 using Random = UnityEngine.Random;
-
+    
 namespace GlassSystem.Scripts
 {
     public class Glass : MonoBehaviour
@@ -23,6 +24,9 @@ namespace GlassSystem.Scripts
         private Transform _transform;
         private float _thickness;
 
+        private Polygon2D _polygon;
+        private Vector2[] _uvs;
+
 
         public void Break(Vector3 breakPosition, Vector3 originVector)
         {
@@ -33,12 +37,12 @@ namespace GlassSystem.Scripts
             localPosition.x *= scale.x;
             localPosition.y *= scale.y;
             
-            Polygon2D polygon = GetPolygon(gameObject, localPosition.z);
-            if (polygon is null)
+            _polygon ??= GetPolygon(gameObject, localPosition.z);
+            if (_polygon is null)
                 return;
 
             int patternIndex = Random.Range(0, Patterns.Length);
-            var lines = ClipPattern.Clip(Patterns[patternIndex], polygon, localPosition);
+            var lines = ClipPattern.Clip(Patterns[patternIndex], _polygon, localPosition);
             var shardPolygons = BuildShardPolygons(lines);
         
             var materials = GetComponent<Renderer>().sharedMaterials;
@@ -50,7 +54,7 @@ namespace GlassSystem.Scripts
             }
             Destroy(gameObject);
         }
-    
+
         Polygon2D GetPolygon(GameObject target, float side)
         {
             var targetMeshFilter = target.GetComponent<MeshFilter>();
@@ -58,33 +62,44 @@ namespace GlassSystem.Scripts
                 return null;
 
             var targetMesh = targetMeshFilter.sharedMesh;
-            var targetVertices = new List<Vector3>();
-            targetMesh.GetVertices(targetVertices);
-            if (targetVertices.Count is > 100 or < 3)
+            var targetVertices = targetMesh.vertices;
+            if (targetVertices.Length is > 100 or < 3)
             {
-                Debug.LogWarning($"Invalid mesh ({targetVertices.Count})");
+                Debug.LogWarning($"Invalid mesh ({targetVertices.Length})");
                 return null;
             }
 
+            // Scale
             var scale = _transform.lossyScale;
             var scalingMatrix = new DiagonalMatrix(2, 2, new double[] { scale.x, scale.y });
+            
+            // Thickness
             var verticesZ = targetVertices.Select(p => p.z).ToList();
             _thickness = (verticesZ.Max() + Mathf.Abs(verticesZ.Min())) * scale.z;
-            var targetPoints = targetVertices.Where(p => Mathf.Abs(p.z - side) < Tolerance)
-                .Select(p => new Point2D(p.x, p.y)).ToList(); // Discard backface
-            targetPoints = targetPoints.Distinct(new Point2DComparer(Tolerance)) // Discard side submesh vertex duplicates
-                .Select(p => p.TransformBy(scalingMatrix)).ToList(); // Apply transform scaling 
             
-            Polygon2D targetPolygon = BuildConvexPolygon(targetPoints);
+            // Vertices to polygon
+            var targetPoints = targetVertices.Select((p, i) =>  new IndexedPoint(p, i)).ToList();
+            targetPoints.RemoveAll(p => Mathf.Abs(p.Z - side) > Tolerance); // Discard backface
+            targetPoints = targetPoints.Distinct(new Point2DComparer(Tolerance)).ToList(); // Discard side submesh vertex duplicates
+            foreach (var point in targetPoints)
+                point.TransformBy(scalingMatrix);
+            
+            // Build convex polygon
+            targetPoints.Sort((a, b) => CompareVectorAngle(new Point2D(0, 0), a, b));
+            Polygon2D targetPolygon = new Polygon2D(targetPoints.Select(p => p.Point2D));
+
+            // UVs
+            var uvs = targetMesh.uv;
+            if (uvs != null && uvs.Length > 0)
+            {
+                _uvs = new Vector2[targetPoints.Count];
+                for (int i = 0; i < targetPoints.Count; i++)
+                    _uvs[i] = uvs[targetPoints[i].Index];
+            }
+
             return targetPolygon;
         }
-    
-        Polygon2D BuildConvexPolygon(List<Point2D> points)
-        {
-            points.Sort((a, b) => CompareVectorAngle(new Point2D(0, 0), a, b));
-            return new Polygon2D(points);
-        }
-    
+
         /// <summary>
         /// Algorithm inspired by https://stackoverflow.com/questions/35468830/efficient-algorithm-to-create-polygons-from-a-2d-mesh-verticesedges
         /// convert the list of segment into a graph, order that graph to form loops of polygons, then consume that graph
@@ -205,16 +220,42 @@ namespace GlassSystem.Scripts
             //else
             //    Destroy(go, shardSurface > MicroShardSurface ? SmallShardTimer : MicroShardTimer); // destroy small shards after x seconds
 
-            /*if (Random.Range(0, 2) == 1) // TODO: rigidbody rules
+            if (false)//Random.Range(0, 2) == 1) // TODO: rigidbody rules
             {
                 var rigidbody = go.AddComponent<Rigidbody>();
                 rigidbody.mass = shardSurface;
                 rigidbody.collisionDetectionMode = CollisionDetectionMode.Continuous;
                 rigidbody.AddForce(OriginVector);
-            }*/
+            }
+            else
+            {
+                go.transform.parent = transform.parent;
+            }
         }
     
-        Mesh CreateMesh(Polygon2D polygon, Point2D offset, float thickness)
+        struct Vertex
+        {
+            public Vector3 Position;
+            public Vector2 Uv;
+        }
+
+        /// <summary>
+        /// Interpolate UV with barycentric coordinate
+        /// </summary>
+        /// <param name="p">Point that needs UV</param>
+        /// <returns>UV of the point</returns>
+        private Vector2 InterpolateUv(Point2D p)
+        {
+            var v = _polygon.Vertices.ToList();
+            double q = (v[1].Y - v[2].Y) * (v[0].X - v[2].X) + (v[2].X - v[1].X) * (v[0].Y - v[2].Y);
+            double w0 = ((v[1].Y - v[2].Y) * (p.X - v[2].X) + (v[2].X - v[1].X) * (p.Y - v[2].Y)) / q;
+            double w1 = ((v[2].Y - v[0].Y) * (p.X - v[2].X) + (v[0].X - v[2].X) * (p.Y - v[2].Y)) / q;
+            double w2 = 1 - w0 - w1;
+            var uv = (_uvs[0] * (float)w0 + _uvs[1] * (float)w1 + _uvs[2] * (float)w2);
+            return uv;
+        }
+        
+        private Mesh CreateMesh(Polygon2D polygon, Point2D offset, float thickness)
         {
             var mesh = new Mesh { name = "Shard" };
             var indices = new List<int>();
@@ -250,16 +291,28 @@ namespace GlassSystem.Scripts
             var faceVertices = vertices.ToList();
             vertices.AddRange(faceVertices);
             vertices.AddRange(faceVertices);
-        
-            var layout = new[] { new VertexAttributeDescriptor(VertexAttribute.Position) };
-            mesh.SetVertexBufferParams(vertices.Count, layout);
-            mesh.SetVertexBufferData(vertices, 0, 0, vertices.Count);
+
+            if (_uvs == null)
+            {
+                var layout = new VertexAttributeDescriptor[] { new (VertexAttribute.Position) };
+                mesh.SetVertexBufferParams(vertices.Count, layout);
+                mesh.SetVertexBufferData(vertices, 0, 0, vertices.Count);
+            }
+            else
+            {
+                var uv = polygon.Vertices.Select(InterpolateUv).ToList();
+                var layout = new VertexAttributeDescriptor[] { new (VertexAttribute.Position), new (VertexAttribute.TexCoord0, dimension:2) };
+                var verticesStruct = vertices.Select((x, i) => new Vertex { Position = x, Uv = uv[i % uv.Count] }).ToList();
+                mesh.SetVertexBufferParams(vertices.Count, layout);
+                mesh.SetVertexBufferData(verticesStruct, 0, 0, vertices.Count);
+            }
+
             mesh.SetIndexBufferParams(indices.Count, IndexFormat.UInt32);
             mesh.SetIndexBufferData(indices,0, 0, indices.Count);
             mesh.subMeshCount = 2;
             mesh.SetSubMesh(0, new SubMeshDescriptor(0, sideIndexStart));
             mesh.SetSubMesh(1, new SubMeshDescriptor(sideIndexStart, indices.Count - sideIndexStart));
-        
+
             mesh.RecalculateNormals();
             mesh.RecalculateBounds();
             return mesh;
@@ -277,5 +330,4 @@ namespace GlassSystem.Scripts
         public InternalGlassException(string message, Exception inner)
             : base(message, inner) { }
     }
-    
 }
