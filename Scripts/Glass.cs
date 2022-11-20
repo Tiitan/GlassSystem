@@ -13,9 +13,9 @@ namespace GlassSystem.Scripts
 {
     public class Glass : MonoBehaviour
     {
-        private const float MicroShardSurface = 0.1f;
+        private const float MicroShardSurface = 0.07f;
         private const float MicroShardTimer = 4f;
-        private const float SmallShardSurface = 0.2f;
+        private const float SmallShardSurface = 0.15f;
         private const float SmallShardTimer = 8f;
         private const float Tolerance = 0.001f;
         
@@ -192,15 +192,16 @@ namespace GlassSystem.Scripts
             return loop;
         }
     
-        void SpawnShard(Mesh mesh, Vector3 OriginVector, Vector3 offset, Material[] materials)
+        void SpawnShard(Mesh mesh, Vector3 originVector, Vector3 offset, Material[] materials)
         {
             float shardSurface = mesh.bounds.size.x * mesh.bounds.size.y;
 
             var go = new GameObject(mesh.name);
 
             go.tag = gameObject.tag;
-            go.transform.position = _transform.position + offset;
-            go.transform.rotation = _transform.rotation;
+            var rotation = _transform.rotation;
+            go.transform.position = _transform.position + rotation * offset;
+            go.transform.rotation = rotation;
         
             var meshFilter = go.AddComponent<MeshFilter>();
             meshFilter.sharedMesh = mesh;
@@ -225,7 +226,7 @@ namespace GlassSystem.Scripts
                 var rigidbody = go.AddComponent<Rigidbody>();
                 rigidbody.mass = shardSurface;
                 rigidbody.collisionDetectionMode = CollisionDetectionMode.Continuous;
-                rigidbody.AddForce(OriginVector);
+                rigidbody.AddForce(originVector);
             }
             else
             {

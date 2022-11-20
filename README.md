@@ -1,17 +1,17 @@
 # Glass system
 
-The glass system is inspired by Receiver 2: On impact, a 2D pattern is clipped on the glass surface. this list of lines is then converted to a list of polygons (shards), finally the list of polygon is used to build the new meshes and gameobjects.
+The glass system is inspired by Receiver 2: On impact, a 2D pattern is clipped on the glass surface. this list of lines is then converted to a list of polygons (shards), finally the list of polygon is used to build the new meshes and game objects.
 
 Contrary to other fracture packages that breaks arbitrary 3D volumes. this package is specialized in realistically shattering 2D windows. Moreover it is focused on simulating Annealed Glass which is standard non-security glass.
 
-There is a glass prefab ready to be shattered. The break function takes a world impact position and an origin vector. for physic, use the velocity of the incoming object, for raycast use the raycast direction, the vector magnitude is the impact strengh.
+There is a glass prefab ready to be shattered. The break function takes a world impact position and an origin vector. for physic, use the velocity of the incoming object, for raycast use the raycast direction, the vector magnitude is the impact strength.
 
 This package focus on annealed glass. It would be very inefficient to make a Tempered glass pattern (The thousand of small pebbles kind), because each shard geometry is built individually and their meshes are unique. It is better to create a particle effect that will use instancing for this kind of glass.
 It is also a bad choice for laminated glass (The kind that breaks without falling, like tesla's cybertruck), here a simple shader would be more suited, with a dynamic additive impact texture. because it is more efficient and because break lines overlap on laminated glass which is impossible with this package.
 
 ## Features
 - The glass shards can recursively break.
-- The glass transform can be scaled and have any thickness for conveniant level design.
+- The glass transform can be scaled and have any thickness for convenient level design.
 - randomized array of hand-crafted fracture pattern, randomly rotated.
 - UV0 is propagated to the shards to allow consistent textures.
 - The shard velocity is inherited from it's parent when it detach (TODO).
@@ -34,9 +34,9 @@ I  made a blender exporter/ unity importer of my own format (https://github.com/
 - The Glass should be oriented on the XY plane and can be any thickness. 
 - The mesh origin should be at the center along Z axis (vertex Z coordinate sign is used to guess the sides!)
 - Again, not exactly convex but vectors angles to origin must remain ordered, all vertices must be on the side, no vertices can be on the surface
-- Scalling (on XY plane) is supported
-- It must contain 2 submeshes (material). The first submesh must be the main surface and the second submesh should be the edges
-- UV coordinate must be mirrored on backside to match frontside, only UV0 is propagated, and uvs must be regular (arbitrary triangle selected for the barycentric interpolation).
+- Scaling (on XY plane) is supported
+- It must contain 2 sub-meshes (material). The first sub-mesh must be the main surface and the second sub-mesh should be the edges
+- UV coordinate must be mirrored on backside to match front side, only UV0 is propagated, and uvs must be regular (arbitrary triangle selected for the barycentric interpolation).
 
 ### Materials
 They can be anything you want, but for the glass edge shader, if you want to disable backface culling, your vertex shader should push the position a little inward along normal to avoid Z fighting.
@@ -54,7 +54,8 @@ It is included in the released package and is on (MIT/X11) license. You can also
 TODO
 
 ## Known issues
-- Some rare times the shard algorithm fails to build the meshes from the pattern, for a reason still unknown. The demo "gun" contains a retry for that reason.
+- Sometimes the shard algorithm fails to build the meshes from the pattern, for a reason still unknown. The demo "gun" contains a retry for that reason.
+- If the glass panel is inclined, the normals on some shard may be inverted. normals are currently automatically calculated by unity, passing them manually during mesh creation will solve this (todo)
 
 ## Licence
 This package is for sale on the Unity asset store, if you got it from github and if you plan on using it, you will need to buy the amount and type of licence required by the asset store's EULA. Thank you for your support.
