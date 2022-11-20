@@ -2104,7 +2104,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 059fa2e9f55ed7b4ab8dffb8a402dfda, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  impactForce: 100
+  impactForce: 2
   Retry: 3
 --- !u!1 &1625205268
 GameObject:

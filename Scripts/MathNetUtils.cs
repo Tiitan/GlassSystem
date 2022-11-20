@@ -15,7 +15,21 @@ namespace GlassSystem.Scripts
             double angle = Math.Atan2(vecB.Y, vecB.X) - Math.Atan2(vecA.Y, vecA.X);
             return angle > 0 ? 1 : angle < 0 ? -1 : 0;
         }
-    
+        
+        /// <summary>
+        /// Interpolate a point inside a triangle.
+        /// </summary>
+        /// <param name="p">point to interpolate</param>
+        /// <param name="t">array of 3 point forming a triangle (unchecked, pass at least 3 points!)</param>
+        /// <returns>interpolated weight vector: x=t[0], y=t[1], z=t[2]</returns>
+        public static Vector3 BarycentricInterpolation(Point2D p, Point2D[] t)
+        {
+            double q = (t[1].Y - t[2].Y) * (t[0].X - t[2].X) + (t[2].X - t[1].X) * (t[0].Y - t[2].Y);
+            double w0 = ((t[1].Y - t[2].Y) * (p.X - t[2].X) + (t[2].X - t[1].X) * (p.Y - t[2].Y)) / q;
+            double w1 = ((t[2].Y - t[0].Y) * (p.X - t[2].X) + (t[0].X - t[2].X) * (p.Y - t[2].Y)) / q;
+            return new Vector3((float)w0, (float)w1, (float)(1 - w0 - w1));
+        }
+        
         public class IndexedPoint
         {
             private Point2D _p;

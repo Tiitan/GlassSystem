@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Drawing;
 using System.Linq;
 using MathNet.Numerics.LinearAlgebra.Double;
 using MathNet.Spatial.Euclidean;
@@ -8,7 +7,7 @@ using UnityEngine;
 using UnityEngine.Rendering;
 using static GlassSystem.Scripts.MathNetUtils;
 using Random = UnityEngine.Random;
-    
+
 namespace GlassSystem.Scripts
 {
     public class Glass : MonoBehaviour
@@ -27,7 +26,19 @@ namespace GlassSystem.Scripts
         private Polygon2D _polygon;
         private Vector2[] _uvs;
 
-
+        
+        public void InitializeShard(Polygon2D polygon, Vector2[] uvs, float thickness)
+        {
+            _polygon = polygon;
+            _thickness = thickness;
+            _uvs = uvs;
+        }
+        
+        /// <summary>
+        /// Entry point to break the glass.
+        /// </summary>
+        /// <param name="breakPosition">world position of the impact point</param>
+        /// <param name="originVector">surface normal of impact (physic) or raycast direction. Used to apply force on the detached shards</param>
         public void Break(Vector3 breakPosition, Vector3 originVector)
         {
             _transform = transform;
@@ -37,7 +48,7 @@ namespace GlassSystem.Scripts
             localPosition.x *= scale.x;
             localPosition.y *= scale.y;
             
-            _polygon ??= GetPolygon(gameObject, localPosition.z);
+            _polygon ??= BuildPolygon(localPosition.z);
             if (_polygon is null)
                 return;
 
@@ -49,15 +60,27 @@ namespace GlassSystem.Scripts
             foreach (Polygon2D shardPolygon in shardPolygons)
             {
                 var center = Point2D.Centroid(shardPolygon.Vertices);
-                var shardMesh = CreateMesh(shardPolygon, center, _thickness);
-                SpawnShard(shardMesh, originVector, new Vector3((float)center.X, (float)center.Y, 0), materials);
+                var centeredShardPolygon = shardPolygon.TranslateBy(-center.ToVector2D());
+                Vector2[] uvs = null;
+                if (_uvs is not null)
+                    uvs = shardPolygon.Vertices.Select(InterpolateUv).ToArray();
+                var shardMesh = CreateMesh(centeredShardPolygon, uvs, _thickness);
+                var glassShard = SpawnShard(shardMesh, originVector, new Vector3((float)center.X, (float)center.Y, 0), materials);
+                if (glassShard is not null)
+                    glassShard.InitializeShard(centeredShardPolygon, uvs, _thickness);
             }
             Destroy(gameObject);
         }
 
-        Polygon2D GetPolygon(GameObject target, float side)
+        /// <summary>
+        /// Build polygon initialize a glass panel about to be broken for the first time,
+        /// it is not used by shards which receives their data from InitializeShard instead.
+        /// </summary>
+        /// <param name="side">z position of the impact, used to discard the back face before building the polygon</param>
+        /// <returns>2D polygon representing the glass panel</returns>
+        Polygon2D BuildPolygon(float side)
         {
-            var targetMeshFilter = target.GetComponent<MeshFilter>();
+            var targetMeshFilter = GetComponent<MeshFilter>();
             if (targetMeshFilter == null)
                 return null;
 
@@ -102,7 +125,7 @@ namespace GlassSystem.Scripts
 
         /// <summary>
         /// Algorithm inspired by https://stackoverflow.com/questions/35468830/efficient-algorithm-to-create-polygons-from-a-2d-mesh-verticesedges
-        /// convert the list of segment into a graph, order that graph to form loops of polygons, then consume that graph
+        /// convert the list of segment into a graph, order that graph to form loops of polygons, then consume that graph to create a list of loop (polygons)
         /// </summary>
         List<Polygon2D> BuildShardPolygons(List<LineSegment2D> lines)
         {
@@ -192,7 +215,7 @@ namespace GlassSystem.Scripts
             return loop;
         }
     
-        void SpawnShard(Mesh mesh, Vector3 originVector, Vector3 offset, Material[] materials)
+        Glass SpawnShard(Mesh mesh, Vector3 originVector, Vector3 offset, Material[] materials)
         {
             float shardSurface = mesh.bounds.size.x * mesh.bounds.size.y;
 
@@ -213,31 +236,30 @@ namespace GlassSystem.Scripts
             meshCollider.convex = true;
             meshCollider.sharedMesh = mesh;
 
+            Glass glass = null;
             if (shardSurface > SmallShardSurface)
             {
-                var glass = go.AddComponent<Glass>();
+                glass = go.AddComponent<Glass>();
                 glass.Patterns = Patterns;
-            }
-            //else
-            //    Destroy(go, shardSurface > MicroShardSurface ? SmallShardTimer : MicroShardTimer); // destroy small shards after x seconds
-
-            if (false)//Random.Range(0, 2) == 1) // TODO: rigidbody rules
-            {
-                var rigidbody = go.AddComponent<Rigidbody>();
-                rigidbody.mass = shardSurface;
-                rigidbody.collisionDetectionMode = CollisionDetectionMode.Continuous;
-                rigidbody.AddForce(originVector);
+                go.transform.parent = transform.parent;
             }
             else
             {
-                go.transform.parent = transform.parent;
+                var shardRigidbody = go.AddComponent<Rigidbody>();
+                shardRigidbody.mass = shardSurface;
+                shardRigidbody.collisionDetectionMode = CollisionDetectionMode.Continuous;
+                shardRigidbody.AddForce(originVector);
+                Destroy(go, shardSurface > MicroShardSurface ? SmallShardTimer : MicroShardTimer); // destroy small shards after x seconds
             }
+
+            return glass;
         }
     
         struct Vertex
         {
             public Vector3 Position;
             public Vector2 Uv;
+            // TODO: add normals to avoid bad computation from unity.
         }
 
         /// <summary>
@@ -247,28 +269,24 @@ namespace GlassSystem.Scripts
         /// <returns>UV of the point</returns>
         private Vector2 InterpolateUv(Point2D p)
         {
-            var v = _polygon.Vertices.ToList();
-            double q = (v[1].Y - v[2].Y) * (v[0].X - v[2].X) + (v[2].X - v[1].X) * (v[0].Y - v[2].Y);
-            double w0 = ((v[1].Y - v[2].Y) * (p.X - v[2].X) + (v[2].X - v[1].X) * (p.Y - v[2].Y)) / q;
-            double w1 = ((v[2].Y - v[0].Y) * (p.X - v[2].X) + (v[0].X - v[2].X) * (p.Y - v[2].Y)) / q;
-            double w2 = 1 - w0 - w1;
-            var uv = (_uvs[0] * (float)w0 + _uvs[1] * (float)w1 + _uvs[2] * (float)w2);
-            return uv;
+            // TODO: find a triangle containing p instead of using the first triangle to allow for non-regular UVs.
+            var weight = BarycentricInterpolation(p, _polygon.Vertices.ToArray());
+            return _uvs[0] * weight.x + _uvs[1] * weight.y + _uvs[2] * weight.z;
         }
         
-        private Mesh CreateMesh(Polygon2D polygon, Point2D offset, float thickness)
+        private Mesh CreateMesh(Polygon2D polygon, Vector2[] uvs, float thickness)
         {
             var mesh = new Mesh { name = "Shard" };
             var indices = new List<int>();
 
             var sideSize = polygon.Vertices.Count();
             // Front
-            var vertices = polygon.Vertices.Select(v => new Vector3((float)(v.X - offset.X), (float)(v.Y - offset.Y), 0)).ToList();
+            var vertices = polygon.Vertices.Select(v => new Vector3((float)v.X, (float)v.Y, 0)).ToList();
             for (int i = 1; i < sideSize - 1; i++)
                 indices.AddRange(new[] {0, i + 1, i});
 
             // Back
-            vertices.AddRange(polygon.Vertices.Select(v => new Vector3((float)(v.X - offset.X), (float)(v.Y - offset.Y), -thickness)));
+            vertices.AddRange(polygon.Vertices.Select(v => new Vector3((float)v.X, (float)v.Y, -thickness)));
             for (int i = 1; i < sideSize - 1; i++)
                 indices.AddRange(new[] {sideSize, sideSize + i, sideSize + i + 1});
 
@@ -293,7 +311,7 @@ namespace GlassSystem.Scripts
             vertices.AddRange(faceVertices);
             vertices.AddRange(faceVertices);
 
-            if (_uvs == null)
+            if (uvs == null)
             {
                 var layout = new VertexAttributeDescriptor[] { new (VertexAttribute.Position) };
                 mesh.SetVertexBufferParams(vertices.Count, layout);
@@ -301,9 +319,8 @@ namespace GlassSystem.Scripts
             }
             else
             {
-                var uv = polygon.Vertices.Select(InterpolateUv).ToList();
                 var layout = new VertexAttributeDescriptor[] { new (VertexAttribute.Position), new (VertexAttribute.TexCoord0, dimension:2) };
-                var verticesStruct = vertices.Select((x, i) => new Vertex { Position = x, Uv = uv[i % uv.Count] }).ToList();
+                var verticesStruct = vertices.Select((x, i) => new Vertex { Position = x, Uv = uvs[i % uvs.Length] }).ToList();
                 mesh.SetVertexBufferParams(vertices.Count, layout);
                 mesh.SetVertexBufferData(verticesStruct, 0, 0, vertices.Count);
             }
