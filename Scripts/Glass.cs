@@ -137,6 +137,8 @@ namespace GlassSystem.Scripts
             {
                 int startIndex = GetIndexOrInsert(pointsList, lineMap, line.StartPoint);
                 int endIndex = GetIndexOrInsert(pointsList, lineMap, line.EndPoint);
+                if (startIndex == endIndex)
+                    continue; // discard micro line
                 lineMap[startIndex].Add(endIndex);
                 lineMap[endIndex].Add(startIndex);
             

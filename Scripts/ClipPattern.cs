@@ -75,5 +75,33 @@ namespace GlassSystem.Scripts
                 edges.Add(new LineSegment2D(points[i], points[(i + 1) % points.Count]));
             return edges;
         }
+
+        public static void SpawnDebugMesh(Transform transform, List<LineSegment2D> lines)
+        {
+            var mesh = new Mesh { name = "Shard" };
+
+            var vertices = new List<Vector3>(lines.Count * 2);
+            var indices = Enumerable.Range(0, lines.Count * 2).ToList();
+            foreach (LineSegment2D line in lines)
+            {
+                vertices.Add(new Vector3((float)line.StartPoint.X, (float)line.StartPoint.Y, 0));
+                vertices.Add(new Vector3((float)line.EndPoint.X, (float)line.EndPoint.Y, 0));
+            }
+            
+            mesh.SetVertices(vertices);
+            mesh.SetIndices(indices, MeshTopology.Lines, 0);
+
+            var go = new GameObject("pattern");
+            go.transform.position = transform.position;
+            go.transform.rotation = transform.rotation;
+            
+            var meshFilter = go.AddComponent<MeshFilter>();
+            meshFilter.sharedMesh = mesh;
+            
+            var renderer = go.AddComponent<MeshRenderer>();
+            var material = new Material(Shader.Find("Unlit/Color"));
+            material.color = Color.red;
+            renderer.material = material;
+        }
     }
 }
