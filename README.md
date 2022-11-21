@@ -37,6 +37,7 @@ I  made a blender exporter/ unity importer of my own format (https://github.com/
 - Scaling (on XY plane) is supported
 - It must contain 2 sub-meshes (material). The first sub-mesh must be the main surface and the second sub-mesh should be the edges
 - UV coordinate must be mirrored on backside to match front side, only UV0 is propagated, and uvs must be regular (arbitrary triangle selected for the barycentric interpolation).
+- While importing in unity, "Read/Write" option must be enabled
 
 ### Materials
 They can be anything you want, but for the glass edge shader, if you want to disable backface culling, your vertex shader should push the position a little inward along normal to avoid Z fighting.
