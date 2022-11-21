@@ -60,18 +60,7 @@ namespace GlassSystem.Scripts
                 rotation = Random.Range(0, 360f);
             var lines = ClipPattern.Clip(Patterns[patternIndex], _polygon, localPosition, rotation);
 
-            List<Polygon2D> shardPolygons = null;
-            try
-            {
-                shardPolygons = BuildShardPolygons(lines);
-            }
-            catch (InternalGlassException e)
-            {
-                ClipPattern.SpawnDebugMesh(_transform, lines);
-                Debug.LogError(e);
-                return;
-            }
-
+            List<Polygon2D> shardPolygons = BuildShardPolygons(lines);
             var materials = GetComponent<Renderer>().sharedMaterials;
             foreach (Polygon2D shardPolygon in shardPolygons)
             {
@@ -153,8 +142,8 @@ namespace GlassSystem.Scripts
             {
                 int startIndex = GetIndexOrInsert(pointsList, lineMap, line.StartPoint);
                 int endIndex = GetIndexOrInsert(pointsList, lineMap, line.EndPoint);
-                if (startIndex == endIndex)
-                    continue; // discard micro line
+                if (startIndex == endIndex || lineMap[startIndex].Contains(endIndex) || lineMap[endIndex].Contains(startIndex)) // discard micro line
+                    continue;
                 lineMap[startIndex].Add(endIndex);
                 lineMap[endIndex].Add(startIndex);
             
