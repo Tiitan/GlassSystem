@@ -38,8 +38,10 @@ namespace GlassSystem.Scripts
         /// Entry point to break the glass.
         /// </summary>
         /// <param name="breakPosition">world position of the impact point</param>
-        /// <param name="originVector">surface normal of impact (physic) or raycast direction. Used to apply force on the detached shards</param>
-        public void Break(Vector3 breakPosition, Vector3 originVector)
+        /// <param name="originVector">surface normal of impact (physic) or raycast direction. This is used to apply force on the detached shards</param>
+        /// <param name="patternIndex">pattern index (-1 is randomized), To be used when networking replication is required</param>
+        /// <param name="rotation">pattern rotation, degree angle between 0 and 360 (NaN is randomized), To be used when networking replication is required</param>
+        public void Break(Vector3 breakPosition, Vector3 originVector, int patternIndex = -1, float rotation = float.NaN)
         {
             _transform = transform;
             
@@ -52,10 +54,24 @@ namespace GlassSystem.Scripts
             if (_polygon is null)
                 return;
 
-            int patternIndex = Random.Range(0, Patterns.Length);
-            var lines = ClipPattern.Clip(Patterns[patternIndex], _polygon, localPosition);
-            var shardPolygons = BuildShardPolygons(lines);
-        
+            if (patternIndex == -1)
+                patternIndex = Random.Range(0, Patterns.Length);
+            if (float.IsNaN(rotation))
+                rotation = Random.Range(0, 360f);
+            var lines = ClipPattern.Clip(Patterns[patternIndex], _polygon, localPosition, rotation);
+
+            List<Polygon2D> shardPolygons = null;
+            try
+            {
+                shardPolygons = BuildShardPolygons(lines);
+            }
+            catch (InternalGlassException e)
+            {
+                ClipPattern.SpawnDebugMesh(_transform, lines);
+                Debug.LogError(e);
+                return;
+            }
+
             var materials = GetComponent<Renderer>().sharedMaterials;
             foreach (Polygon2D shardPolygon in shardPolygons)
             {

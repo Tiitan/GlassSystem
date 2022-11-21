@@ -10,9 +10,8 @@ namespace GlassSystem.Scripts
 {
     public static class ClipPattern
     {
-        public static List<LineSegment2D> Clip(Mesh pattern, Polygon2D mask, Vector3 offset)
+        public static List<LineSegment2D> Clip(Mesh pattern, Polygon2D mask, Vector3 offset, float rotationAngle)
         {
-            var rotationAngle = Random.Range(0, 360f);
             var patternLines = MeshToSegments(pattern, offset, rotationAngle);
             var (lines, intersections) = ClipEdges(mask, patternLines);
             var edges = BuildEdgeLines(mask.Vertices.Concat(intersections).ToList());

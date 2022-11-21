@@ -13,7 +13,9 @@ It is also a bad choice for laminated glass (The kind that breaks without fallin
 - The glass shards can recursively break.
 - The glass transform can be scaled and have any thickness for convenient level design.
 - randomized array of hand-crafted fracture pattern, randomly rotated.
+- Glass mesh of Any convex shape can be used
 - UV0 is propagated to the shards to allow consistent textures.
+- Networking ready: randomness optional (rotation value and pattern index can be passed in)
 - The shard velocity is inherited from it's parent when it detach (TODO).
 - Glass corners stay attached to their frame, while the interconnected graph of shard may trigger a fall cascade (TODO).
 
