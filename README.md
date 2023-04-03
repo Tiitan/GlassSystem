@@ -1,23 +1,26 @@
 # Glass system
+This glass shatter system simulate window fracture with hand drawn impact patterns.
+it is inspired by Receiver 2's algorithms: On impact, a 2D pattern is clipped on the glass surface. this list of lines is then converted to a list of polygons (shards), finally the list of polygon is used to build the new meshes and game objects.
+Contrary to other fracture packages that allows to breaks arbitrary 3D volumes, this package is specialized in realistically simulating two dimensional windows. Moreover it focuses on simulating Annealed Glass which is standard non-security glass.
+The hand drawn nature of the fracture pattern provide 2 major benefit over a procedural approach with no real drawback:
+- You keep your full creative freedom over the style of fracture you wish to see, to match the style of your project contrary to a simple procedural approach that lacks details and personality.
+- The shard generation stays very lightweight and mobile friendly compared to a physics based fracture method.
+- By rotating the patterns, only a handful of fracture meshes are enough to keep the illusion of randomness.
 
-The glass system is inspired by Receiver 2: On impact, a 2D pattern is clipped on the glass surface. this list of lines is then converted to a list of polygons (shards), finally the list of polygon is used to build the new meshes and game objects.
+In this released package, there is a glass prefab ready to be shattered. The "break" function just takes a world impact position and an origin direction vector. For physic impact, you should just use the velocity and colision point of the incoming object, for raycast use the raycast direction, the vector magnitude is the impact strength.
 
-Contrary to other fracture packages that breaks arbitrary 3D volumes. this package is specialized in realistically shattering 2D windows. Moreover it is focused on simulating Annealed Glass which is standard non-security glass.
-
-There is a glass prefab ready to be shattered. The break function takes a world impact position and an origin vector. for physic, use the velocity of the incoming object, for raycast use the raycast direction, the vector magnitude is the impact strength.
-
-This package focus on annealed glass. It would be very inefficient to make a Tempered glass pattern (The thousand of small pebbles kind), because each shard geometry is built individually and their meshes are unique. It is better to create a particle effect that will use instancing for this kind of glass.
+This package focuses on annealed glass. It would be very inefficient to make a Tempered glass pattern (The thousand of small pebbles kind), because each shard geometry is built individually and their meshes are unique. It is better to create a particle effect that will use instancing for this kind of glass.
 It is also a bad choice for laminated glass (The kind that breaks without falling, like tesla's cybertruck), here a simple shader would be more suited, with a dynamic additive impact texture. because it is more efficient and because break lines overlap on laminated glass which is impossible with this package.
 
 ## Features
 - The glass shards can recursively break.
-- The glass transform can be scaled and have any thickness for convenient level design.
+- The glass transform can be non-uniformly scaled and have any thickness for convenient level design.
 - randomized array of hand-crafted fracture pattern, randomly rotated.
 - Glass mesh of Any convex shape can be used
 - UV0 is propagated to the shards to allow consistent textures.
 - Networking ready: randomness optional (rotation value and pattern index can be passed in)
-- The shard velocity is inherited from it's parent when it detach (TODO).
-- Glass corners stay attached to their frame, while the interconnected graph of shard may trigger a fall cascade (TODO).
+- The shard velocity is inherited from it's parent when it detach.
+- Glass corners stay attached to their frame, while the interconnected graph of shard may trigger a fall cascade (Premium version, WIP).
 
 ## Resources
 All resources can be changed with these requirements:
@@ -69,8 +72,7 @@ I can implement small features to remove some limitations if they appear to be a
 such as supporting additional UVs, concave glass panels, etc
 
 ## Known issues
-- Sometimes the shard algorithm fails to build the meshes from the pattern, for a reason still unknown. The demo "gun" contains a retry for that reason.
-- If the glass panel is inclined, the normals on some shard may be inverted. normals are currently automatically calculated by unity, passing them manually during mesh creation will solve this (todo)
+none, all fixed :)
 
 ## Licence
 The packaged version of this tool is also available on the unity asset store for free under the store's [EULA](https://unity.com/legal/as-terms?utm_source=google&utm_medium=cpc&utm_campaign=cc_dd_upr_emea_emea_en_aw_dsp-gg_acq_w-rt_2023-03_pmax-mofu_cc3022_mofu-dd&utm_content=&utm_term=&gclid=Cj0KCQjw8qmhBhClARIsANAtbocYuqb7OnPFyv-M6r0zf9QDIOIwoJQN0s3nu9VISXDfI_9XZJarkJIaAjNGEALw_wcB&gclsrc=aw.ds). Premium features will be released in a paid version and will requires you to buy the amount and type of licence in accordance to the store's EULA requirements.
