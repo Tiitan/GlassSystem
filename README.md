@@ -56,12 +56,25 @@ It is included in the released package and is on (MIT/X11) license. You can also
 
 TODO
 
+## Future
+Future features will be developped for a paid package version, but remain open source here in the "premium" branch, see licence.
+### Glass shard graph logic
+Each shard will be linked to its neighbors with a bidirectional graph. This will enable more realistic physic (no more flying shards) and advanced gameplay logic (shards starts falling after X impact). Do not expect it sooner than end of 2023, I have other priorities to finish first.
+### Long term possibilites (no promises)
+- Temperated glass particle system
+- Laminated glass shader
+- In-engine glass pattern editor
+### User request
+I can implement small features to remove some limitations if they appear to be a deal breaker for a lot of users,
+such as supporting additional UVs, concave glass panels, etc
+
 ## Known issues
 - Sometimes the shard algorithm fails to build the meshes from the pattern, for a reason still unknown. The demo "gun" contains a retry for that reason.
 - If the glass panel is inclined, the normals on some shard may be inverted. normals are currently automatically calculated by unity, passing them manually during mesh creation will solve this (todo)
 
 ## Licence
-This package is for sale on the Unity asset store, if you got it from github and if you plan on using it, you will need to buy the amount and type of licence required by the asset store's EULA. Thank you for your support.
+The packaged version of this tool is also available on the unity asset store for free under the store's [EULA](https://unity.com/legal/as-terms?utm_source=google&utm_medium=cpc&utm_campaign=cc_dd_upr_emea_emea_en_aw_dsp-gg_acq_w-rt_2023-03_pmax-mofu_cc3022_mofu-dd&utm_content=&utm_term=&gclid=Cj0KCQjw8qmhBhClARIsANAtbocYuqb7OnPFyv-M6r0zf9QDIOIwoJQN0s3nu9VISXDfI_9XZJarkJIaAjNGEALw_wcB&gclsrc=aw.ds). Premium features will be released in a paid version and will requires you to buy the amount and type of licence in accordance to the store's EULA requirements.
+The whole source code is open for consultation and documentation purposes but the "premium" branch shouldn't be used in a production environement without the adequate unity store licence.
 
 ## Contact 
 Contact me on discord Titan#8190 if you have any question.
