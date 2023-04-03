@@ -23,10 +23,11 @@ namespace GlassSystem.Scripts
         private Transform _transform;
         private float _thickness;
 
-        private Polygon2D _polygon;
-        private Vector2[] _uvs;
+        private Polygon2D _polygon;   // 2D polygon matching mesh geometry
+        private Vector2[] _uvs;       // polygon uvs (uvs count and order match _polygon.vertices)
 
-        
+        private List<Glass>[] _neighbors; // shard neighbors on each edge (_neighbors count and order match _polygon.edges)
+
         public void InitializeShard(Polygon2D polygon, Vector2[] uvs, float thickness)
         {
             _polygon = polygon;
@@ -61,7 +62,9 @@ namespace GlassSystem.Scripts
             var lines = ClipPattern.Clip(Patterns[patternIndex], _polygon, localPosition, rotation);
 
             List<Polygon2D> shardPolygons = ShardPolygonBuilder.Build(lines, Tolerance);
+            
             var materials = GetComponent<Renderer>().sharedMaterials;
+            List<Glass> shards = new List<Glass>(); // match shardPolygons order and count, can contain nulls
             foreach (Polygon2D shardPolygon in shardPolygons)
             {
                 var center = Point2D.Centroid(shardPolygon.Vertices);
@@ -71,12 +74,32 @@ namespace GlassSystem.Scripts
                     uvs = shardPolygon.Vertices.Select(InterpolateUv).ToArray();
                 var shardMesh = CreateMesh(centeredShardPolygon, uvs, _thickness);
                 var glassShard = SpawnShard(shardMesh, originVector, new Vector3((float)center.X, (float)center.Y, 0), materials);
+                shards.Add(glassShard);
                 if (glassShard is not null)
                     glassShard.InitializeShard(centeredShardPolygon, uvs, _thickness);
             }
+
+            for (int i = 0; i < shards.Count; i++)
+            {
+                if (shards[i] is null)
+                    continue;
+                var edges = shardPolygons[i].Edges.ToArray();
+                var shardNeighborsPolygon = new List<int>[edges.Length];
+                for (int j = 0; j < edges.Length; j++)
+                {
+                    //shardNeighborsPolygon[j] = FindMatchingEdge(edges[j], shardPolygons);
+                }
+            }
+            
             Destroy(gameObject);
         }
 
+        List<Polygon2D> FindMatchingEdge(LineSegment2D line, List<Polygon2D> polygons)
+        {
+            return new List<Polygon2D>();
+        }
+        
+        
         /// <summary>
         /// Build polygon initialize a glass panel about to be broken for the first time,
         /// it is not used by shards which receives their data from InitializeShard instead.
