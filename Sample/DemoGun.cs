@@ -22,7 +22,7 @@ namespace GlassSystem.Sample
                 if (Physics.Raycast(transform.position, raycastDirection, out hit, Mathf.Infinity))
                 {
                     Debug.DrawRay(transform.position, raycastDirection * hit.distance, Color.yellow, 10);
-                    var glass = hit.collider.gameObject.GetComponent<Glass>();
+                    var glass = hit.collider.gameObject.GetComponent<BaseGlass>();
                     if (glass is not null)
                     {
                         int failBreak = 0;

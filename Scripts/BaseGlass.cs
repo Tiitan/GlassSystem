@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using MathNet.Numerics.LinearAlgebra.Double;
 using MathNet.Spatial.Euclidean;
 using UnityEngine;
 using UnityEngine.Rendering;
@@ -10,30 +9,23 @@ using Random = UnityEngine.Random;
 
 namespace GlassSystem.Scripts
 {
-    public class Glass : MonoBehaviour
+    public class BaseGlass : MonoBehaviour
     {
+        protected GlassPanel _parentPanel;
+
         private const float MicroShardSurface = 0.07f;
         private const float MicroShardTimer = 4f;
         private const float SmallShardSurface = 0.15f;
         private const float SmallShardTimer = 8f;
-        private const float Tolerance = 0.001f;
+        protected const float Tolerance = 0.001f;
         
         public Mesh[] Patterns;
 
-        private Transform _transform;
-        private float _thickness;
+        protected Transform _transform;
+        protected float _thickness;     // glasss thickness used when extruding the shard mesh
+        protected Polygon2D _polygon;   // 2D polygon matching mesh geometry
+        protected Vector2[] _uvs;       // polygon uvs (uvs.count match _polygon.vertices.count)
 
-        private Polygon2D _polygon;
-        private Vector2[] _uvs;
-
-        
-        public void InitializeShard(Polygon2D polygon, Vector2[] uvs, float thickness)
-        {
-            _polygon = polygon;
-            _thickness = thickness;
-            _uvs = uvs;
-        }
-        
         /// <summary>
         /// Entry point to break the glass.
         /// </summary>
@@ -41,7 +33,7 @@ namespace GlassSystem.Scripts
         /// <param name="originVector">surface normal of impact (physic) or raycast direction. This is used to apply force on the detached shards</param>
         /// <param name="patternIndex">pattern index (-1 is randomized), To be used when networking replication is required</param>
         /// <param name="rotation">pattern rotation, degree angle between 0 and 360 (NaN is randomized), To be used when networking replication is required</param>
-        public void Break(Vector3 breakPosition, Vector3 originVector, int patternIndex = -1, float rotation = float.NaN)
+        public virtual void Break(Vector3 breakPosition, Vector3 originVector, int patternIndex = -1, float rotation = float.NaN)
         {
             _transform = transform;
             
@@ -72,63 +64,16 @@ namespace GlassSystem.Scripts
                 var shardMesh = CreateMesh(centeredShardPolygon, uvs, _thickness);
                 var glassShard = SpawnShard(shardMesh, originVector, new Vector3((float)center.X, (float)center.Y, 0), materials);
                 if (glassShard is not null)
-                    glassShard.InitializeShard(centeredShardPolygon, uvs, _thickness);
+                    glassShard.InitializeShard(_parentPanel, centeredShardPolygon, uvs, _thickness);
             }
-            Destroy(gameObject);
         }
 
-        /// <summary>
-        /// Build polygon initialize a glass panel about to be broken for the first time,
-        /// it is not used by shards which receives their data from InitializeShard instead.
-        /// </summary>
-        /// <param name="side">z position of the impact, used to discard the back face before building the polygon</param>
-        /// <returns>2D polygon representing the glass panel</returns>
-        Polygon2D BuildPolygon(float side)
+        protected virtual Polygon2D BuildPolygon(float localPositionZ)
         {
-            var targetMeshFilter = GetComponent<MeshFilter>();
-            if (targetMeshFilter == null)
-                return null;
-
-            var targetMesh = targetMeshFilter.sharedMesh;
-            var targetVertices = targetMesh.vertices;
-            if (targetVertices.Length is > 100 or < 3)
-            {
-                Debug.LogWarning($"Invalid mesh ({targetVertices.Length})");
-                return null;
-            }
-
-            // Scale
-            var scale = _transform.lossyScale;
-            var scalingMatrix = new DiagonalMatrix(2, 2, new double[] { scale.x, scale.y });
-            
-            // Thickness
-            var verticesZ = targetVertices.Select(p => p.z).ToList();
-            _thickness = (verticesZ.Max() + Mathf.Abs(verticesZ.Min())) * scale.z;
-            
-            // Vertices to polygon
-            var targetPoints = targetVertices.Select((p, i) =>  new IndexedPoint(p, i)).ToList();
-            targetPoints.RemoveAll(p => Mathf.Abs(p.Z - side) > Tolerance); // Discard backface
-            targetPoints = targetPoints.Distinct(new Point2DComparer(Tolerance)).ToList(); // Discard side submesh vertex duplicates
-            foreach (var point in targetPoints)
-                point.TransformBy(scalingMatrix);
-            
-            // Build convex polygon
-            targetPoints.Sort((a, b) => CompareVectorAngle(new Point2D(0, 0), a, b));
-            Polygon2D targetPolygon = new Polygon2D(targetPoints.Select(p => p.Point2D));
-
-            // UVs
-            var uvs = targetMesh.uv;
-            if (uvs != null && uvs.Length > 0)
-            {
-                _uvs = new Vector2[targetPoints.Count];
-                for (int i = 0; i < targetPoints.Count; i++)
-                    _uvs[i] = uvs[targetPoints[i].Index];
-            }
-
-            return targetPolygon;
+            return _polygon;
         }
-
-        Glass SpawnShard(Mesh mesh, Vector3 originVector, Vector3 offset, Material[] materials)
+        
+        Shard SpawnShard(Mesh mesh, Vector3 originVector, Vector3 offset, Material[] materials)
         {
             float shardSurface = mesh.bounds.size.x * mesh.bounds.size.y;
 
@@ -149,12 +94,13 @@ namespace GlassSystem.Scripts
             meshCollider.convex = true;
             meshCollider.sharedMesh = mesh;
 
-            Glass glass = null;
+            Shard shard = null;
             if (shardSurface > SmallShardSurface)
             {
-                glass = go.AddComponent<Glass>();
-                glass.Patterns = Patterns;
+                shard = go.AddComponent<Shard>();
+                shard.Patterns = Patterns;
                 go.transform.parent = transform.parent;
+                _parentPanel.OnNewSHard(shard);
             }
             else
             {
@@ -165,9 +111,14 @@ namespace GlassSystem.Scripts
                 Destroy(go, shardSurface > MicroShardSurface ? SmallShardTimer : MicroShardTimer); // destroy small shards after x seconds
             }
 
-            return glass;
+            return shard;
         }
-    
+
+        public void Fall()
+        {
+            // TODO make shard start falling
+        }
+        
         struct Vertex
         {
             public Vector3 Position;
