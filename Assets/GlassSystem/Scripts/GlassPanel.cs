@@ -83,7 +83,7 @@ namespace GlassSystem.Scripts
              
              Destroy(GetComponent<MeshFilter>());
              Destroy(GetComponent<MeshRenderer>());
-             Destroy(GetComponent<MeshRenderer>());
+             Destroy(GetComponent<Collider>());
          }
          
          public void OnShardDestroyed(Shard shard)

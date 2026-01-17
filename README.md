@@ -72,7 +72,7 @@ I can implement small features to remove some limitations if they appear to be a
 such as supporting additional UVs, concave glass panels, etc
 
 ## Known issues
-Backside shards don't explode.
+None, all fixed :)
 
 ## Licence
 The packaged version of this tool is also available on the unity asset store for free under the store's [EULA](https://unity.com/legal/as-terms?utm_source=google&utm_medium=cpc&utm_campaign=cc_dd_upr_emea_emea_en_aw_dsp-gg_acq_w-rt_2023-03_pmax-mofu_cc3022_mofu-dd&utm_content=&utm_term=&gclid=Cj0KCQjw8qmhBhClARIsANAtbocYuqb7OnPFyv-M6r0zf9QDIOIwoJQN0s3nu9VISXDfI_9XZJarkJIaAjNGEALw_wcB&gclsrc=aw.ds). Premium features will be released in a paid version and will requires you to buy the amount and type of licence in accordance to the store's EULA requirements.
