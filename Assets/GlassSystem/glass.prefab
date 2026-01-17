@@ -129,4 +129,4 @@ MonoBehaviour:
   Patterns:
   - {fileID: 4300000, guid: 5d3ef576115c59445b0e12214d660364, type: 2}
   - {fileID: 4300000, guid: 1cb648fc35a6bb14a8826a86f348e568, type: 2}
-  health: 2
+  health: 100

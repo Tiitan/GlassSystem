@@ -25,6 +25,9 @@ namespace GlassSystem.Scripts
         protected float _thickness;     // glasss thickness used when extruding the shard mesh
         protected Polygon2D _polygon;   // 2D polygon matching mesh geometry
         protected Vector2[] _uvs;       // polygon uvs (uvs.count match _polygon.vertices.count)
+        protected Vector2 _centerOffset; // offset from panel origin (for sub-shards, accumulated from parents)
+
+        public Polygon2D Polygon => _polygon;
 
         /// <summary>
         /// Entry point to break the glass.
@@ -64,7 +67,11 @@ namespace GlassSystem.Scripts
                 var shardMesh = CreateMesh(centeredShardPolygon, uvs, _thickness);
                 var glassShard = SpawnShard(shardMesh, originVector, new Vector3((float)center.X, (float)center.Y, 0), materials);
                 if (glassShard is not null)
-                    glassShard.InitializeShard(_parentPanel, centeredShardPolygon, uvs, _thickness);
+                {
+                    glassShard.InitializeShard(_parentPanel, centeredShardPolygon, uvs, _thickness,
+                        _centerOffset + new Vector2((float)center.X, (float)center.Y));
+                    _parentPanel.OnNewShard(glassShard);
+                }
             }
         }
 
@@ -100,7 +107,6 @@ namespace GlassSystem.Scripts
                 shard = go.AddComponent<Shard>();
                 shard.Patterns = Patterns;
                 go.transform.parent = transform.parent;
-                _parentPanel.OnNewSHard(shard);
             }
             else
             {
@@ -116,7 +122,26 @@ namespace GlassSystem.Scripts
 
         public void Fall()
         {
-            // TODO make shard start falling
+            var rb = gameObject.AddComponent<Rigidbody>();
+            rb.mass = Mathf.Max(0.1f, CalculatePolygonArea());
+            rb.collisionDetectionMode = CollisionDetectionMode.Continuous;
+            rb.linearVelocity = Vector3.down * 0.5f;
+            rb.angularVelocity = new Vector3(
+                Random.Range(-1f, 1f), Random.Range(-1f, 1f), Random.Range(-1f, 1f));
+            Destroy(gameObject, 8f);
+        }
+
+        private float CalculatePolygonArea()
+        {
+            if (_polygon == null) return 0.15f;
+            var verts = _polygon.Vertices.ToArray();
+            double area = 0;
+            for (int i = 0; i < verts.Length; i++)
+            {
+                int j = (i + 1) % verts.Length;
+                area += verts[i].X * verts[j].Y - verts[j].X * verts[i].Y;
+            }
+            return (float)Math.Abs(area / 2.0);
         }
         
         struct Vertex
